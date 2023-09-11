@@ -84,7 +84,7 @@ while (rep <= 3): # Executa uma vez para cada modelo a ser testado
     x = preprocess_input(inputs)
     x = base_model(x, training=False)
     x = global_average_layer(x)
-    x = tf.keras.layers.Dropout(0.2)(x) # Adicionando uma camada de dropout no meio para evitar overfitting
+    #x = tf.keras.layers.Dropout(0.2)(x) # Adicionando uma camada de dropout para evitar overfitting
     outputs = prediction_layer(x)
 
     model = tf.keras.Model(inputs, outputs)
@@ -123,11 +123,4 @@ while (rep <= 3): # Executa uma vez para cada modelo a ser testado
         f.writelines(names[rep] + ' - ' + str(time.time() - start_time) + '\n')
 
     rep += 1
-
-# Para testar algum modelo, utilizar o método a seguir (sendo "val_ds" o dataset a ser testado):
-
-#testModel = tf.keras.models.load_model("save100epochs.h5")
-#results = testModel.evaluate(test_ds, batch_size = 32)
-
-#print("test loss, test acc:", results)
 
