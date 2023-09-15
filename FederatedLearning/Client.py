@@ -119,7 +119,7 @@ while (rep <= 3): # Executa uma vez para cada modelo a ser testado
     x = preprocess_input(inputs)
     x = base_model(x, training=False)
     x = global_average_layer(x)
-    x = tf.keras.layers.Dropout(0.2)(x) # Adicionando uma camada de dropout no meio para evitar overfitting
+    #x = tf.keras.layers.Dropout(0.2)(x) # Adicionando uma camada de dropout para evitar overfitting
     outputs = prediction_layer(x)
     model = tf.keras.Model(inputs, outputs)
 

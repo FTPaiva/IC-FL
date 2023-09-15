@@ -6,7 +6,11 @@ from flwr.common import Metrics
 import time
 
 
-strategy = fl.server.strategy.FedAvg()
+strategy = fl.server.strategy.FedAvg(
+    min_fit_clients=5,
+    min_evaluate_clients=5,
+    min_available_clients=5
+)
 
 # Lista para nomes de arquivos
 names = ['VGG', 'ResNet', 'Xception', 'MobileNet']
