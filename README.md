@@ -1,5 +1,3 @@
-# IC-FedLearn
-
 ## Base de dados utilizada
 
 A base de dados escolhida foi a [Road Pothole Images for Pothole detection](https://www.kaggle.com/datasets/sovitrath/road-pothole-images-for-pothole-detection/) disponível no Kaggle.
@@ -24,10 +22,13 @@ A pasta destinada às imagens de teste do dataset do kaggle não possui indicaç
 O repositório está dividido em 2 pastas principais, [MainTraining](MainTraining) e [FederatedLearning](FederatedLearning), sendo a primeira uma versão sem a utilização do aprendizado federado.
 
 ### Pasta MainTraining
-O script principal ([Classification.py](MainTraining/Classification.py)) usa os dados contidos na pasta [traindata](MainTraining/traindata), onde as imagens classificadas como **positivas** (contendo buracos) ficam em uma pasta e as **negativas** em outra.
+O script principal ([Classification.py](MainTraining/Classification.py)) usa os dados contidos na pasta [traindata](MainTraining/traindata), onde as imagens **positivas** (contendo buracos) ficam em uma pasta e as **negativas** em outra.
 
 A divisão dos datasets de treinamento e validação é feita através
 de uma função do keras (*tf.keras.preprocessing.image_dataset_from_directory*). Nos parâmetros dessa função, defini que 20% das imagens seriam destinadas à validação e o *batch size* seria de 32 (esses valores pode ser alterados a fim de otimização, mas utilizei valores que vi sendo recomendados). O tamanho de imagem de 224x224 foi utilizado pois a maioria das redes neurais pré-treinadas que usei tinham esse formato de input. Foi utilizada uma *seed* fixa para que os resultados sejam consistentes e as comparações feitas entre os modelos sejam mais justas.
+
+> [!NOTE]
+> Para algumas seeds, a acurácia de validação acabou ficando mais alta que a acurácia de treinamento, algo anormal. Isso pode ser um indicativo de uma divisão ruim do dataset, então algo que pode ser feito para evitar esse tipo de situação é realizar validação cruzada.
 
 Há um **while loop** que engloba o resto do script que executa uma vez para cada rede a ser treinada, mudando partes do modelo a cada ciclo. Primeiramente, é definido qual rede pré-treinada deve ser importada, juntamente com sua função de pré-processamento específica (que prepara as imagens para se adequarem aos inputs esperados pela rede). É importante definir o parâmetro *include_top* da rede como **False**, pois a fim de realizar o *transfer learning*, alteramos o final da rede neural, então não desejamos importar as últimas camadas.
 
@@ -68,12 +69,47 @@ O script [Test.py](MainTraining/Test.py) pode ser usado para testar os modelos.
 
 ### Pasta FederatedLearning
 
+Nessa pasta, lidamos com o aprendizado federado através do framework Flower. Existem 2 scripts principais, [Client.py](FederatedLearning/Client.py) e [Server.py](FederatedLearning/Server.py), que atuam em papel de cliente e servidor.
+
+#### Servidor
+
+No script do servidor, é definida a estratégia de aprendizado (nesse caso, FedAvg), podendo escolher parâmetros como número mínimo de clientes conectados, definir os pesos iniciais do modelo, etc.
+
+```
+strategy = fl.server.strategy.FedAvg(
+    min_fit_clients=5,
+    min_evaluate_clients=5,
+    min_available_clients=5
+)
+```
+O **while loop** seguinte executa uma vez para cada rede neural pré-treinada a ser utilizada. Nele, é iniciado o **servidor Flower**, com algumas configurações como o ip utilizado e o número de rounds de treinamento (Ao final de cada round, os clientes se comunicam com o servidor e ocorre a agregação dos pesos). O tempo gasto no treinamento de cada modelo é, então, salvo no arquivo [time.txt](FederatedLearning/history/time.txt).
+
+#### Cliente
+
+O script do cliente, ocorre a importação dos dados da mesma forma que foi realizada anteriormente, mas desta vez, dentro da pasta [traindata](FederatedLearning/traindata), há uma pasta para cada cliente.
+
+Em seguida, é definido o **cliente Flower**, com as funções que o servidor solicitará a execução em diferentes momentos durante os rounds de treinamento. A função **get_parameters()** é chamada quando o servidor deseja saber os pesos do cliente e neste caso apenas retornamos os pesos do modelo. A função **fit()** é executada durante o treinamento em si e nela também escolhi salvar o histórico das métricas a cada época em arquivos txt na pasta [history](FederatedLearning/history). A função **evaluate()** é chamada na hora de avaliar o modelo de cada cliente e obter as métricas.
+
+O **while loop** seguinte funciona de maneira análoga ao do script [Classification.py](MainTraining/Classification.py), definindo o modelo base e as camadas adicionais, escolhendo a função de *loss* e iniciando o **cliente Flower** no final. Note que o próximo ciclo do *loop* só inicia após o término do treinamento do ciclo atual.
+
+#### Script Run.py
+
+Esse script é destinado para a execução automática da simulação, executando primeiro o script do servidor e depois algumas instâncias do script do cliente, alterando o parâmetro **client_id**.
+
+> [!NOTE]
+> Esse script não está funcionando da maneira desejada, os processos não estão sendo executados em paralelo e são executados apenas quando o anterior termina a execução.
+
+O jeito que eu estava fazendo antes era criar uma cópia de cada script e mudar o parâmetro client_id manualmente, e então eu executava cada um deles separadamente.
 
 ## Passos futuros/a fazer
 
 - Realizar uma comparação mais profunda entre as diferentes redes neurais utilizadas sob a luz de mais aspectos.
   - Matriz de confusão.
   - Utilizar mais métricas.
+    
+- Explorar melhor as opções do Flower.
+  - Fazer testes e comparações com outras estratégias de aprendizado além do FedAvg.
+  - Experimentar com diferentes parâmetros das estratégias.
 
 - Utilizar validação cruzada.
   - Reduzir o impacto da aleatoriedade da divisão dos conjuntos de treino e validação.
